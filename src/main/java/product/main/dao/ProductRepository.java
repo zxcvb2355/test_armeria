@@ -10,8 +10,13 @@ import product.main.domain.ProductVO;
 import java.util.List;
 
 
-@Repository
-public interface ProductRepository extends JpaRepository<ProductVO, String> {
+
+public interface ProductRepository extends JpaRepository<ProductVO, String> , CustomRepository{
+
+   /*
     @Query("select new ProductVO(a.pnum, a.pname, a.pimage, a.ppay) from ProductVO a where a.pname = :pname")
     List<ProductVO> findThis(@Param("pname") String pname);
+*/
+
 }
+

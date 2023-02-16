@@ -1,5 +1,6 @@
 package product.main.domain;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -10,11 +11,16 @@ import javax.persistence.*;
 @Getter
 @Setter
 @RequiredArgsConstructor
+@AllArgsConstructor
+@TableGenerator(
+        name = "PRODUCT_SEQ_GENERATOR",
+        table = "PRO_SEQ",
+        pkColumnValue = "PNUM", allocationSize = 1)
 public class ProductVO {
     @Id
-    @GeneratedValue(strategy = GenerationType.TABLE)
+    @GeneratedValue(strategy = GenerationType.TABLE ,generator = "PRODUCT_SEQ_GENERATOR")
     @Column(name="PNUM")
-    private String pnum;
+    private Long pnum;
     @Column(name="PNAME")
     private String pname;
     @Column(name="PIMAGE")
@@ -22,11 +28,8 @@ public class ProductVO {
     @Column(name="PPAY")
     private int ppay;
 
-    public ProductVO(String pnum, String pname, String pimage, int ppay) {
-        this.pnum = pnum;
-        this.pname = pname;
-        this.pimage = pimage;
-        this.ppay = ppay;
-    }
+    @Column(name="DEL_YN")
+    private String del_yn;
+
 
 }

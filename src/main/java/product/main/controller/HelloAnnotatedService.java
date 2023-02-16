@@ -10,9 +10,12 @@ import com.linecorp.armeria.common.HttpRequest;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
-import com.linecorp.armeria.server.annotation.Post;
+import com.linecorp.armeria.server.annotation.*;
+import lombok.RequiredArgsConstructor;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,38 +24,41 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.validation.annotation.Validated;
 
-import com.linecorp.armeria.server.annotation.ExceptionHandler;
-import com.linecorp.armeria.server.annotation.Get;
-import com.linecorp.armeria.server.annotation.Param;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import product.main.common.html_buffer;
 import product.main.config.ValidationExceptionHandler;
 
 import product.main.domain.ProductVO;
+import product.main.domain.selectSeeData;
 import product.main.service.ProductService;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 
 @RestController
 @Validated
 @ExceptionHandler(ValidationExceptionHandler.class)
+@RequiredArgsConstructor
 public class HelloAnnotatedService {
     private static Logger logger = LoggerFactory.getLogger(HelloAnnotatedService.class);
-    @Autowired(required = false)
-    private ProductService productService;
+
+    private final ProductService productService;
 
 
     @Get("/product")
-    public HttpResponse selectAll() throws JsonProcessingException {
+    public Object selectAll() throws JsonProcessingException {
 
 
 
         logger.info("product 진입");
-        List<ProductVO> list = productService.selectAll();
+        List<selectSeeData> list = productService.selectAll();
         logger.info("list : " + list.size());
 
         ObjectMapper mapper = new ObjectMapper();
@@ -104,12 +110,12 @@ public class HelloAnnotatedService {
         json.put("product", json_data);
 
 
-        return HttpResponse.of(HttpStatus.OK, MediaType.HTML_UTF_8, html_buffer.selectAll(), jsonStr, json.toJSONString());
+        return HttpResponse.of(HttpStatus.OK, MediaType.JSON,jsonStr  + "\n" + "\n" +   json.toJSONString());
     }
 
     @Get("/productsFind")
     public HttpResponse FindOne() throws JsonProcessingException {
-        List<ProductVO> list = productService.selectAll();
+        List<selectSeeData> list = productService.selectAll();
         logger.info("list : " + list.size());
         String[] dataPname = null;
         JSONObject json = new JSONObject();
@@ -123,7 +129,7 @@ public class HelloAnnotatedService {
 
         String productFind = html_buffer.findOne();
 
-        return HttpResponse.of(HttpStatus.OK, MediaType.HTML_UTF_8, productFind + json.toJSONString());
+        return HttpResponse.of(HttpStatus.OK, MediaType.JSON, json.toJSONString());
     }
 
     @Get("/product/{name}")
@@ -131,20 +137,83 @@ public class HelloAnnotatedService {
 
 
         logger.info("pname : " + name);
-        List<ProductVO> list  = productService.findOne(name);
+        List<selectSeeData> list  = productService.findOne(name);
         logger.info("list : " + list.size());
         ObjectMapper mapper = new ObjectMapper();
         String jsonStr = mapper.writeValueAsString(list);
 
 
-        return HttpResponse.of(HttpStatus.OK, MediaType.HTML_UTF_8, jsonStr);
+        return HttpResponse.of(HttpStatus.OK, MediaType.JSON, jsonStr);
     }
 
-    @Get("/seeData")
-    public HttpResponse hello() {
+    @Post("/Data")
+        public Object Data(@RequestBody JSONObject data) throws JsonProcessingException {
 
-        String seeDataHtml = html_buffer.seeDataHtml();
+        ProductVO pvo = null;
+        pvo = new ProductVO();
 
-        return HttpResponse.of(HttpStatus.OK, MediaType.HTML_UTF_8, seeDataHtml);
+        pvo.setPname((String)data.get("pname"));
+        String pname = pvo.getPname();
+        logger.info("pname : " + pname);
+        pvo.setPimage((String)data.get("pimage"));
+        pvo.setPpay((Integer)data.get("ppay"));
+        pvo.setDel_yn("Y");
+
+        String value = productService.insert(pvo);
+
+        List<selectSeeData> list  = productService.findOne(pname);
+        ObjectMapper mapper = new ObjectMapper();
+        String jsonStr = mapper.writeValueAsString(list);
+
+        return HttpResponse.of(HttpStatus.OK, MediaType.PLAIN_TEXT_UTF_8, value + "\n" + jsonStr);
     }
+
+    @Put("/reData")
+    public Object reData(@RequestBody JSONObject  reData) throws JsonProcessingException {
+
+       ProductVO pvo = null;
+        pvo = new ProductVO();
+        pvo.setPnum(Long.parseLong(String.valueOf(reData.get("pnum"))));
+        Long pnum = pvo.getPnum();
+        logger.info("pnum : " + pnum);
+        pvo.setPname((String)reData.get("pname"));
+        pvo.setPimage((String)reData.get("pimage"));
+        pvo.setPpay((Integer)reData.get("ppay"));
+        pvo.setDel_yn("Y");
+
+        String value = productService.update(pvo);
+
+        List<selectSeeData> list = productService.findIdOne(pnum);
+        ObjectMapper mapper = new ObjectMapper();
+        String jsonStr = mapper.writeValueAsString(list);
+
+
+        return HttpResponse.of(HttpStatus.OK, MediaType.PLAIN_TEXT_UTF_8, value + "\n" + jsonStr);
+    }
+
+   @Put("/cleanData")
+   public Object cleanData(@RequestBody JSONObject  cData) throws JsonProcessingException {
+
+        ProductVO pvo = null;
+       pvo = new ProductVO();
+       Long pnum = Long.parseLong(String.valueOf(cData.get("pnum")));
+
+       List<selectSeeData> list = productService.findIdOne(pnum);
+
+       if(list.size() == 0){
+           return "해당 데이터 없음";
+       }
+
+       pvo.setPnum(pnum);
+       pvo.setPname(list.get(0).getPname());
+       pvo.setPimage(list.get(0).getPimage());
+       pvo.setPpay(list.get(0).getPpay());
+       pvo.setDel_yn("N");
+
+       String value = productService.delete(pvo);
+
+       
+        return HttpResponse.of(HttpStatus.OK, MediaType.PLAIN_TEXT_UTF_8, value);
+   }
+
 }
